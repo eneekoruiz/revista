@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, useGLTF, Float } from "@react-three/drei";
+import { Environment, useGLTF, Float, Html, useProgress } from "@react-three/drei";
 import { EffectComposer, Bloom, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -13,11 +13,23 @@ gsap.registerPlugin(ScrollTrigger);
 const MODEL_URL = "https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/scenegraph-layer/airplane.glb";
 const scrollState = { progress: 0 };
 
+// LOADER para que no haya salto extraño
+function CanvasLoader() {
+  const { progress } = useProgress();
+  return (
+    <Html center>
+      <div className="text-[#FC352E] font-anton text-2xl tracking-widest uppercase flex flex-col items-center">
+        <span>INICIANDO...</span>
+        <span className="text-white/50 text-sm">{progress.toFixed(0)}%</span>
+      </div>
+    </Html>
+  );
+}
+
 // 1. EL AVIÓN (Coreografía matemática pura)
 function AirplaneChoreography() {
   const { scene } = useGLTF(MODEL_URL);
   const groupRef = useRef<THREE.Group>(null);
-  const { viewport } = useThree();
 
   useEffect(() => {
     scene.traverse((child) => {
@@ -27,7 +39,6 @@ function AirplaneChoreography() {
           color: new THREE.Color("#e0e0e0"),
           roughness: 0.1,
           metalness: 0.8,
-          transparent: true,
           envMapIntensity: 2.5,
         });
         mesh.material = mat;
@@ -40,26 +51,21 @@ function AirplaneChoreography() {
     if (!groupRef.current) return;
     const t = scrollState.progress;
 
-    // Curva Matemática: Entra desde la cámara y se aleja haciendo una curva dramática.
-    // Posición
-    groupRef.current.position.x = THREE.MathUtils.lerp(2, -10, t); // Se desplaza hacia la izquierda
-    groupRef.current.position.y = Math.sin(t * Math.PI) * 3 - (t * 2); // Arco balístico hacia abajo
-    groupRef.current.position.z = THREE.MathUtils.lerp(8, -15, t); // Se aleja hacia el horizonte
+    // Curva Matemática: Entra desde la cámara y sale disparado por la esquina superior/lejana
+    // Al pasar de 0.8, aceleramos la salida
+    const easeOut = t < 0.7 ? t : t + (t - 0.7) * 2; 
 
-    // Rotación (Barrel Roll + Giro hacia abajo)
-    const roll = THREE.MathUtils.lerp(0, Math.PI * 2, t * 1.5); // Da una vuelta sobre sí mismo
-    const pitch = THREE.MathUtils.lerp(-0.2, 0.8, t); // Pica el morro hacia abajo al irse
-    const yaw = THREE.MathUtils.lerp(0, -1, t); // Gira a la izquierda
+    groupRef.current.position.x = THREE.MathUtils.lerp(2, -18, easeOut); 
+    groupRef.current.position.y = Math.sin(t * Math.PI) * 3 - (easeOut * 1.5); 
+    groupRef.current.position.z = THREE.MathUtils.lerp(8, -35, easeOut); 
+
+    // Rotación (Barrel Roll + Giro)
+    const roll = THREE.MathUtils.lerp(0, Math.PI * 2.5, t * 1.5); 
+    const pitch = THREE.MathUtils.lerp(-0.2, 1.2, t); 
+    const yaw = THREE.MathUtils.lerp(0, -1.5, t); 
     
     groupRef.current.rotation.set(pitch, yaw, roll);
-
-    // Fade Out al final del scroll para transición limpia a la web
-    const opacity = t > 0.8 ? 1 - (t - 0.8) * 5 : 1;
-    groupRef.current.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, opacity);
-      }
-    });
+    // Eliminado el fade out artificial (difuminado), ahora sale del plano de forma natural.
   });
 
   return (
@@ -105,20 +111,18 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
     const st = ScrollTrigger.create({
       trigger: el,
       start: "top top",
-      end: () => "+=" + window.innerHeight * 5,
+      // Reducido de * 5 a * 2.5 para hacerlo mucho más ágil y que no haya que scrollear tanto
+      end: () => "+=" + window.innerHeight * 2.5,
       pin: true,
-      scrub: 1.5,
+      scrub: 1.2, // Scrub más reactivo
       onUpdate(self) {
         scrollState.progress = self.progress;
       },
       onLeave() {
-        // OPTIMIZACIÓN: Congelamos R3F cuando el hero ya no está en el viewport
         setIsActive(false); 
-        gsap.to(canvasWrapRef.current, { opacity: 0, duration: 0.3 });
       },
       onEnterBack() {
         setIsActive(true);
-        gsap.to(canvasWrapRef.current, { opacity: 1, duration: 0.3 });
       },
     });
 
@@ -128,7 +132,7 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
   return (
     <div ref={containerRef} className="relative w-full bg-black overflow-hidden h-[100vh]">
       
-      {/* CAPA DE TEXTOS (Visual Editing Ready mediante props) */}
+      {/* CAPA DE TEXTOS */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none">
         <h1 className="font-anton text-center uppercase tracking-tighter leading-[0.88] text-[#FC352E]" style={{ fontSize: "clamp(3rem, 11vw, 11rem)" }}>
           {globalSettings?.heroTitleLine1 || "RAK$ CLUB"}
@@ -142,32 +146,33 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
 
       {/* RENDER 3D OPTIMIZADO */}
       <div ref={canvasWrapRef} className="absolute inset-0 z-20 pointer-events-none">
-        {/* Usamos frameloop="demand" o desmontaje condicional para salvar batería */}
         <Canvas
           frameloop={isActive ? "always" : "never"}
-          dpr={[1, 2]} // Aumentamos a 2 para pantallas retina (más nitidez)
+          dpr={[1, 2]} 
           gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
           shadows
         >
-          <CameraRig />
-          <ambientLight intensity={1.5} />
-          <directionalLight 
-            position={[10, 10, 5]} 
-            intensity={4.0} 
-            castShadow 
-            shadow-mapSize={[2048, 2048]} // Sombras de alta resolución
-            shadow-bias={-0.0001}
-          />
-          <pointLight position={[0, -2, -5]} intensity={20.0} color="#FC352E" distance={40} />
-          <Environment preset="city" />
-          
-          <AirplaneChoreography />
+          <Suspense fallback={<CanvasLoader />}>
+            <CameraRig />
+            <ambientLight intensity={1.5} />
+            <directionalLight 
+              position={[10, 10, 5]} 
+              intensity={4.0} 
+              castShadow 
+              shadow-mapSize={[2048, 2048]} 
+              shadow-bias={-0.0001}
+            />
+            <pointLight position={[0, -2, -5]} intensity={20.0} color="#FC352E" distance={40} />
+            <Environment preset="city" />
+            
+            <AirplaneChoreography />
 
-          {/* Multisampling a 4 u 8 elimina los bordes pixelados (Anti-Aliasing de post-proceso) */}
-          <EffectComposer multisampling={4}>
-            <DepthOfField focusDistance={0.05} focalLength={0.05} bokehScale={4} height={480} />
-            <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={1.5} />
-          </EffectComposer>
+            {/* Multisampling a 8 para AA Extremo, elimina por completo el aliasing */}
+            <EffectComposer multisampling={8}>
+              <DepthOfField focusDistance={0.05} focalLength={0.05} bokehScale={2} height={480} />
+              <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} height={300} opacity={1.5} />
+            </EffectComposer>
+          </Suspense>
         </Canvas>
       </div>
       
