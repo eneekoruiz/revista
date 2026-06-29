@@ -3,8 +3,8 @@
 
 import React, { useRef, useEffect, useState, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, useGLTF, Float, Html, useProgress } from "@react-three/drei";
-import { EffectComposer, Bloom, DepthOfField } from "@react-three/postprocessing";
+import { Environment, useGLTF, Float, Preload } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -26,67 +26,64 @@ function getFlightProfile(width: number) {
 
   if (isMobile) {
     return {
-      scale: 0.05,
-      startX: 0.35,
-      endX: -7.25,
-      startZ: 4,
-      endZ: -20,
-      arc: 2.15,
-      descent: 0.85,
-      startFov: 58,
-      endFov: 72,
-      startCameraZ: 22,
-      endCameraZ: 29,
-      cameraY: 0.25,
-      smoothing: 3.2,
+      scale: 0.052,
+      startX: 0.25,
+      midX: -0.9,
+      exitX: -8.8,
+      startY: -0.05,
+      exitY: 4.8,
+      startZ: 3.6,
+      midZ: -6,
+      exitZ: -17,
+      arc: 2.35,
+      startFov: 54,
+      endFov: 66,
+      startCameraZ: 20,
+      endCameraZ: 26,
+      cameraY: 0.2,
+      smoothing: 4.25,
     };
   }
 
   if (isTablet) {
     return {
-      scale: 0.055,
-      startX: 1.1,
-      endX: -11,
+      scale: 0.058,
+      startX: 1,
+      midX: -1.8,
+      exitX: -13.5,
+      startY: -0.05,
+      exitY: 5.4,
       startZ: 6,
-      endZ: -26,
-      arc: 2.6,
-      descent: 1.15,
-      startFov: 46,
-      endFov: 64,
-      startCameraZ: 17,
-      endCameraZ: 24,
-      cameraY: 0.1,
-      smoothing: 3.7,
+      midZ: -9,
+      exitZ: -25,
+      arc: 2.8,
+      startFov: 44,
+      endFov: 60,
+      startCameraZ: 16,
+      endCameraZ: 22,
+      cameraY: 0.05,
+      smoothing: 4.6,
     };
   }
 
   return {
-    scale: 0.06,
-    startX: 2,
-    endX: -18,
+    scale: 0.064,
+    startX: 2.2,
+    midX: -2.4,
+    exitX: -20,
+    startY: 0,
+    exitY: 6.8,
     startZ: 8,
-    endZ: -35,
-    arc: 3,
-    descent: 1.5,
-    startFov: 35,
-    endFov: 60,
+    midZ: -12,
+    exitZ: -38,
+    arc: 3.25,
+    startFov: 34,
+    endFov: 56,
     startCameraZ: 12,
-    endCameraZ: 20,
+    endCameraZ: 19,
     cameraY: 0,
-    smoothing: 4.5,
+    smoothing: 5,
   };
-}
-
-function CanvasLoader() {
-  const { progress } = useProgress();
-  return (
-    <Html center>
-      <div className="text-[#FC352E] font-anton text-2xl tracking-widest uppercase flex flex-col items-center">
-        <span>INICIANDO...</span>
-        <span className="text-white/50 text-sm">{progress.toFixed(0)}%</span>
-      </div>
-    </Html>
-  );
 }
 
 function AirplaneChoreography() {
@@ -99,13 +96,17 @@ function AirplaneChoreography() {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        mesh.material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color("#e0e0e0"),
-          roughness: 0.16,
-          metalness: 0.78,
-          envMapIntensity: 2.2,
+        mesh.material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color("#f4f4f1"),
+          roughness: 0.28,
+          metalness: 0.48,
+          clearcoat: 0.55,
+          clearcoatRoughness: 0.18,
+          envMapIntensity: 2.8,
         });
         mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.frustumCulled = false;
       }
     });
   }, [scene]);
@@ -113,7 +114,7 @@ function AirplaneChoreography() {
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    const dt = Math.min(delta, 0.05);
+    const dt = Math.min(delta, 0.045);
     scrollState.current = THREE.MathUtils.damp(
       scrollState.current,
       scrollState.target,
@@ -122,22 +123,35 @@ function AirplaneChoreography() {
     );
 
     const t = THREE.MathUtils.clamp(scrollState.current, 0, 1);
-    const easeOut = t < 0.7 ? t : t + (t - 0.7) * 1.8;
+    const cruise = THREE.MathUtils.smoothstep(t, 0, 0.72);
+    const exit = THREE.MathUtils.smoothstep(t, 0.64, 1);
 
-    groupRef.current.position.x = THREE.MathUtils.lerp(profile.startX, profile.endX, easeOut);
-    groupRef.current.position.y = Math.sin(t * Math.PI) * profile.arc - easeOut * profile.descent;
-    groupRef.current.position.z = THREE.MathUtils.lerp(profile.startZ, profile.endZ, easeOut);
+    const x = THREE.MathUtils.lerp(
+      THREE.MathUtils.lerp(profile.startX, profile.midX, cruise),
+      profile.exitX,
+      exit
+    );
+    const y = profile.startY + Math.sin(cruise * Math.PI) * profile.arc + exit * profile.exitY;
+    const z = THREE.MathUtils.lerp(
+      THREE.MathUtils.lerp(profile.startZ, profile.midZ, cruise),
+      profile.exitZ,
+      exit
+    );
 
-    const roll = THREE.MathUtils.lerp(0, Math.PI * 2.5, t * 1.5);
-    const pitch = THREE.MathUtils.lerp(-0.2, 1.2, t);
-    const yaw = THREE.MathUtils.lerp(0, -1.5, t);
+    groupRef.current.position.set(x, y, z);
+
+    const roll = t < 0.72
+      ? THREE.MathUtils.lerp(0, Math.PI * 2.2, cruise)
+      : THREE.MathUtils.lerp(Math.PI * 2.2, Math.PI * 2.55, exit);
+    const pitch = THREE.MathUtils.lerp(-0.16, 0.72, cruise) + exit * 0.45;
+    const yaw = THREE.MathUtils.lerp(0.05, -0.95, cruise) + exit * -0.5;
 
     groupRef.current.rotation.set(pitch, yaw, roll);
   });
 
   return (
     <group ref={groupRef}>
-      <Float speed={1.45} rotationIntensity={0.35} floatIntensity={0.55}>
+      <Float speed={1.15} rotationIntensity={0.18} floatIntensity={0.32}>
         <primitive object={scene} scale={profile.scale} />
       </Float>
     </group>
@@ -149,24 +163,24 @@ function CameraRig() {
   const profile = getFlightProfile(size.width);
 
   useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
+    const dt = Math.min(delta, 0.045);
     const t = THREE.MathUtils.clamp(scrollState.current, 0, 1);
     const perspectiveCamera = camera as THREE.PerspectiveCamera;
 
     perspectiveCamera.fov = THREE.MathUtils.damp(
       perspectiveCamera.fov,
       THREE.MathUtils.lerp(profile.startFov, profile.endFov, t),
-      6,
+      7,
       dt
     );
     camera.position.z = THREE.MathUtils.damp(
       camera.position.z,
       THREE.MathUtils.lerp(profile.startCameraZ, profile.endCameraZ, t),
-      6,
+      7,
       dt
     );
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, profile.cameraY, 6, dt);
-    camera.lookAt(0, 0, 0);
+    camera.position.y = THREE.MathUtils.damp(camera.position.y, profile.cameraY, 7, dt);
+    camera.lookAt(0, 0.15, 0);
     perspectiveCamera.updateProjectionMatrix();
   });
 
@@ -189,9 +203,9 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
     const st = ScrollTrigger.create({
       trigger: el,
       start: "top top",
-      end: () => `+=${window.innerHeight * 2.5}`,
+      end: () => `+=${Math.max(window.innerHeight * 2.2, 1300)}`,
       pin: true,
-      scrub: 2.5,
+      scrub: 2.2,
       anticipatePin: 1,
       invalidateOnRefresh: true,
       fastScrollEnd: false,
@@ -221,17 +235,20 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full bg-black overflow-hidden h-[100svh] min-h-[620px] md:h-[100vh]">
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-3 sm:px-6">
+    <div ref={containerRef} className="relative w-full bg-black overflow-hidden h-[100svh] min-h-[600px] md:h-[100vh]">
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6">
         <h1
-          className="font-anton text-center uppercase leading-[0.84] text-[#FC352E] md:leading-[0.88]"
-          style={{ fontSize: "clamp(4.9rem, 24vw, 11rem)", letterSpacing: "0" }}
+          className="font-anton text-center uppercase leading-[0.86] md:leading-[0.88]"
+          style={{ fontSize: "clamp(3.85rem, 18vw, 10.6rem)", letterSpacing: "0" }}
         >
-          {globalSettings?.heroTitleLine1 || "RAK$ CLUB"}
-          <br />
-          {globalSettings?.heroTitleLine2 || "MAGAZINE"}
+          <span className="block text-[#FC352E] drop-shadow-[0_0_22px_rgba(252,53,46,0.46)]">
+            {globalSettings?.heroTitleLine1 || "RAK$ CLUB"}
+          </span>
+          <span className="block text-white drop-shadow-[0_0_26px_rgba(252,53,46,0.38)]">
+            {globalSettings?.heroTitleLine2 || "MAGAZINE"}
+          </span>
         </h1>
-        <p className="mt-5 max-w-[92vw] text-center text-white/35 font-poppins font-bold uppercase tracking-[0.24em] text-[clamp(0.58rem,2.3vw,0.9rem)] sm:tracking-[0.35em] md:mt-6 md:text-[clamp(0.55rem,1.2vw,0.9rem)]">
+        <p className="mt-5 max-w-[92vw] text-center text-white/38 font-poppins font-bold uppercase tracking-[0.22em] text-[clamp(0.56rem,2vw,0.85rem)] sm:tracking-[0.32em] md:mt-6">
           {globalSettings?.heroTagline || "Cultura Urbana · Norte de España"}
         </p>
       </div>
@@ -239,27 +256,35 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
       <div className="absolute inset-0 z-20 pointer-events-none">
         <Canvas
           frameloop={isActive ? "always" : "never"}
-          dpr={[1, 1.5]}
-          gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+          dpr={[1.25, 2]}
+          gl={{
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance",
+            toneMapping: THREE.ACESFilmicToneMapping,
+            outputColorSpace: THREE.SRGBColorSpace,
+          }}
           shadows
         >
-          <Suspense fallback={<CanvasLoader />}>
+          <Suspense fallback={null}>
             <CameraRig />
-            <ambientLight intensity={1.45} />
+            <ambientLight intensity={0.72} />
+            <hemisphereLight intensity={0.55} color="#ffffff" groundColor="#080808" />
             <directionalLight
-              position={[10, 10, 5]}
-              intensity={3.6}
+              position={[8, 9, 7]}
+              intensity={4.4}
               castShadow
-              shadow-mapSize={[1024, 1024]}
-              shadow-bias={-0.0001}
+              shadow-mapSize={[2048, 2048]}
+              shadow-bias={-0.00008}
             />
-            <pointLight position={[0, -2, -5]} intensity={16.0} color="#FC352E" distance={38} />
-            <Environment preset="city" />
+            <pointLight position={[-2.8, 1.2, 4]} intensity={34} color="#FC352E" distance={42} />
+            <pointLight position={[3, -2, 6]} intensity={10} color="#ffffff" distance={26} />
+            <Environment preset="studio" environmentIntensity={1.35} />
             <AirplaneChoreography />
-            <EffectComposer multisampling={0}>
-              <DepthOfField focusDistance={0.055} focalLength={0.04} bokehScale={1.25} height={360} />
-              <Bloom luminanceThreshold={0.55} luminanceSmoothing={0.9} height={240} opacity={1.1} />
+            <EffectComposer multisampling={4}>
+              <Bloom luminanceThreshold={0.28} luminanceSmoothing={0.72} height={720} opacity={1.2} />
             </EffectComposer>
+            <Preload all />
           </Suspense>
         </Canvas>
       </div>

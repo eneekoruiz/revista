@@ -8,9 +8,8 @@ export default function BrutalistNav() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
-  // Don't render the nav inside the Sanity Studio
   if (pathname?.startsWith('/studio')) {
-    return null;
+    return null
   }
 
   const links = [
@@ -24,24 +23,23 @@ export default function BrutalistNav() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 w-full z-50 bg-black/95 backdrop-blur-md border-b border-white/10 px-6 py-6 md:px-12">
-        <div className="w-full flex justify-between items-center pointer-events-auto">
+      <nav className="fixed top-0 left-0 w-full z-50 bg-black/95 backdrop-blur-md border-b border-white/10 px-4 py-4 md:px-6 lg:px-8 lg:py-5 xl:px-12">
+        <div className="w-full flex justify-between items-center gap-5 pointer-events-auto">
           <Link
             href="/"
-            className="text-white hover:text-[#FC352E] transition-colors leading-[0.9] flex flex-col"
+            className="text-white hover:text-[#FC352E] transition-colors leading-[0.88] flex shrink-0 flex-col"
             style={{ fontFamily: 'var(--font-anton), Impact, sans-serif' }}
           >
-            <span className="text-3xl md:text-4xl uppercase">RAK$ CLUB</span>
-            <span className="text-sm md:text-base text-[#FC352E] uppercase tracking-widest">MAGAZINE</span>
+            <span className="text-2xl md:text-[1.7rem] lg:text-3xl xl:text-4xl uppercase">RAK$ CLUB</span>
+            <span className="text-[0.62rem] md:text-xs lg:text-sm text-[#FC352E] uppercase tracking-[0.24em] lg:tracking-widest">MAGAZINE</span>
           </Link>
-          
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-4 lg:gap-8">
+
+          <div className="hidden lg:flex min-w-0 items-center justify-end gap-4 xl:gap-8">
             {links.map((link) => (
               <Link
                 key={link.name}
                 href={link.path}
-                className={`text-xs lg:text-sm font-bold tracking-widest lg:tracking-[0.2em] uppercase transition-colors whitespace-nowrap ${
+                className={`text-[0.68rem] xl:text-sm font-bold tracking-[0.12em] xl:tracking-[0.2em] uppercase transition-colors whitespace-nowrap ${
                   pathname === link.path ? 'text-[#FC352E]' : 'text-white hover:text-[#FC352E]'
                 }`}
                 style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
@@ -49,20 +47,18 @@ export default function BrutalistNav() {
                 {link.name}
               </Link>
             ))}
-            
-            {/* ÚNETE BUTTON */}
+
             <Link
               href="/unete"
-              className="bg-[#FC352E] text-white px-5 py-2.5 text-xs font-bold tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-colors"
+              className="bg-[#FC352E] text-white px-4 py-2 text-[0.68rem] xl:px-5 xl:py-2.5 xl:text-xs font-bold tracking-[0.16em] xl:tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-colors"
               style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
             >
               ÚNETE
             </Link>
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <button 
-            className="md:hidden text-white font-bold tracking-[0.2em] text-xs uppercase"
+          <button
+            className="lg:hidden text-white font-bold tracking-[0.2em] text-xs uppercase"
             onClick={() => setIsOpen(!isOpen)}
             style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
           >
@@ -71,9 +67,8 @@ export default function BrutalistNav() {
         </div>
       </nav>
 
-      {/* Mobile Fullscreen Menu */}
-      <div 
-        className={`fixed inset-0 bg-[#FC352E] z-40 overflow-y-auto overscroll-contain px-8 pb-12 pt-[calc(7rem+env(safe-area-inset-top))] sm:px-12 sm:pb-16 sm:pt-[calc(8rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[cubic-bezier(0.77,0,0.175,1)] ${
+      <div
+        className={`fixed inset-0 bg-[#FC352E] z-40 overflow-y-auto overscroll-contain px-8 pb-12 pt-[calc(6.5rem+env(safe-area-inset-top))] sm:px-12 sm:pb-16 sm:pt-[calc(7rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[cubic-bezier(0.77,0,0.175,1)] ${
           isOpen ? 'translate-y-0' : '-translate-y-full'
         }`}
         aria-hidden={!isOpen}
@@ -85,9 +80,9 @@ export default function BrutalistNav() {
               href={link.path}
               onClick={() => setIsOpen(false)}
               className="text-black uppercase leading-[0.9] hover:text-white transition-colors"
-              style={{ 
-                fontFamily: 'var(--font-anton), Impact, sans-serif', 
-                fontSize: 'clamp(2.75rem, 13vw, 6rem)',
+              style={{
+                fontFamily: 'var(--font-anton), Impact, sans-serif',
+                fontSize: 'clamp(2.7rem, 12vw, 5.8rem)',
                 transform: isOpen ? 'translateY(0)' : 'translateY(40px)',
                 opacity: isOpen ? 1 : 0,
                 transition: `transform 0.5s ease ${i * 0.1 + 0.3}s, opacity 0.5s ease ${i * 0.1 + 0.3}s, color 0.2s ease`
@@ -96,15 +91,14 @@ export default function BrutalistNav() {
               {link.name}
             </Link>
           ))}
-          
-          {/* Mobile ÚNETE BUTTON */}
+
           <Link
             href="/unete"
             onClick={() => setIsOpen(false)}
             className="text-white uppercase leading-[0.9] mt-8"
-            style={{ 
-              fontFamily: 'var(--font-anton), Impact, sans-serif', 
-              fontSize: 'clamp(2.75rem, 13vw, 6rem)',
+            style={{
+              fontFamily: 'var(--font-anton), Impact, sans-serif',
+              fontSize: 'clamp(2.7rem, 12vw, 5.8rem)',
               transform: isOpen ? 'translateY(0)' : 'translateY(40px)',
               opacity: isOpen ? 1 : 0,
               transition: `transform 0.5s ease ${(links.length) * 0.1 + 0.3}s, opacity 0.5s ease ${(links.length) * 0.1 + 0.3}s, color 0.2s ease`
