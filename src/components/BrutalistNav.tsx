@@ -73,11 +73,12 @@ export default function BrutalistNav() {
 
       {/* Mobile Fullscreen Menu */}
       <div 
-        className={`fixed inset-0 bg-[#FC352E] z-40 flex flex-col justify-center px-12 transition-transform duration-500 ease-[cubic-bezier(0.77,0,0.175,1)] ${
+        className={`fixed inset-0 bg-[#FC352E] z-40 overflow-y-auto overscroll-contain px-8 pb-12 pt-[calc(7rem+env(safe-area-inset-top))] sm:px-12 sm:pb-16 sm:pt-[calc(8rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[cubic-bezier(0.77,0,0.175,1)] ${
           isOpen ? 'translate-y-0' : '-translate-y-full'
         }`}
+        aria-hidden={!isOpen}
       >
-        <div className="flex flex-col gap-6">
+        <div className="flex min-h-full flex-col justify-center gap-5 py-4 sm:gap-6">
           {links.map((link, i) => (
             <Link
               key={link.name}
@@ -86,7 +87,7 @@ export default function BrutalistNav() {
               className="text-black uppercase leading-[0.9] hover:text-white transition-colors"
               style={{ 
                 fontFamily: 'var(--font-anton), Impact, sans-serif', 
-                fontSize: 'clamp(3rem, 15vw, 6rem)',
+                fontSize: 'clamp(2.75rem, 13vw, 6rem)',
                 transform: isOpen ? 'translateY(0)' : 'translateY(40px)',
                 opacity: isOpen ? 1 : 0,
                 transition: `transform 0.5s ease ${i * 0.1 + 0.3}s, opacity 0.5s ease ${i * 0.1 + 0.3}s, color 0.2s ease`
@@ -103,7 +104,7 @@ export default function BrutalistNav() {
             className="text-white uppercase leading-[0.9] mt-8"
             style={{ 
               fontFamily: 'var(--font-anton), Impact, sans-serif', 
-              fontSize: 'clamp(3rem, 15vw, 6rem)',
+              fontSize: 'clamp(2.75rem, 13vw, 6rem)',
               transform: isOpen ? 'translateY(0)' : 'translateY(40px)',
               opacity: isOpen ? 1 : 0,
               transition: `transform 0.5s ease ${(links.length) * 0.1 + 0.3}s, opacity 0.5s ease ${(links.length) * 0.1 + 0.3}s, color 0.2s ease`

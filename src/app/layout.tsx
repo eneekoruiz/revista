@@ -1,30 +1,15 @@
 import type { Metadata } from "next";
-import { Anton, Archivo_Black, Poppins } from "next/font/google";
+import "@fontsource/anton/400.css";
+import "@fontsource/bebas-neue/400.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/inter/700.css";
+import "@fontsource/inter/800.css";
+import "@fontsource/inter/900.css";
 import "./globals.css";
 import Analytics from "@/components/Analytics";
 import BrutalistNav from "@/components/BrutalistNav";
 import CookieBanner from "@/components/CookieBanner";
-
-const anton = Anton({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-anton",
-  display: "swap",
-});
-
-const archivoBlack = Archivo_Black({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-archivo",
-  display: "swap",
-});
-
-const poppins = Poppins({
-  weight: ["400", "600", "700", "800", "900"],
-  subsets: ["latin"],
-  variable: "--font-poppins",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -66,10 +51,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="es"
-      className={`${anton.variable} ${archivoBlack.variable} ${poppins.variable} antialiased`}
-    >
+    <html lang="es" className="antialiased">
       <body className="flex flex-col min-h-[100dvh]">
         <BrutalistNav />
         {children}

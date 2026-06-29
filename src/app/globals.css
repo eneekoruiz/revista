@@ -13,6 +13,10 @@
 }
 
 :root {
+  --font-anton: 'Anton';
+  --font-archivo: 'Bebas Neue';
+  --font-poppins: 'Inter';
+
   /* RAK$ CLUB Brand Colors */
   --raks-red: #FC352E;
   --raks-red-dark: #d42820;
