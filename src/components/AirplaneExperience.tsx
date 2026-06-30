@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/immutability */
 "use client";
 
-import React, { useMemo, useRef, useEffect, useState } from "react";
+import React, { Suspense, useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Float } from "@react-three/drei";
+import { Float, useGLTF, useProgress } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -11,6 +11,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const MODEL_URL = "/assets/models/airplane.glb";
 const scrollState = { target: 0, current: 0 };
 
 interface HeroSettings {
@@ -25,16 +26,16 @@ function getFlightProfile(width: number) {
 
   if (isMobile) {
     return {
-      scale: 0.86,
-      startX: 0.2,
-      midX: -0.65,
-      exitX: -11.5,
+      scale: 0.052,
+      startX: -0.55,
+      midX: 0.25,
+      exitX: 12.5,
       startY: -0.05,
-      exitY: 8.2,
+      exitY: 9.5,
       startZ: 3.8,
       midZ: -5.8,
-      exitZ: -4.5,
-      arc: 2.25,
+      exitZ: -4.2,
+      arc: 2.15,
       startFov: 53,
       endFov: 62,
       startCameraZ: 20,
@@ -46,16 +47,16 @@ function getFlightProfile(width: number) {
 
   if (isTablet) {
     return {
-      scale: 1,
-      startX: 0.95,
-      midX: -1.45,
-      exitX: -16,
+      scale: 0.058,
+      startX: -0.8,
+      midX: 1.25,
+      exitX: 17.5,
       startY: -0.05,
-      exitY: 9.8,
+      exitY: 11,
       startZ: 6,
       midZ: -8.5,
-      exitZ: -6,
-      arc: 2.7,
+      exitZ: -5.5,
+      arc: 2.6,
       startFov: 43,
       endFov: 56,
       startCameraZ: 16,
@@ -66,16 +67,16 @@ function getFlightProfile(width: number) {
   }
 
   return {
-    scale: 1.08,
-    startX: 2.1,
-    midX: -2.1,
-    exitX: -25,
+    scale: 0.064,
+    startX: -1.6,
+    midX: 2.3,
+    exitX: 27,
     startY: 0,
-    exitY: 12.5,
+    exitY: 14,
     startZ: 8,
     midZ: -11,
-    exitZ: -7,
-    arc: 3.05,
+    exitZ: -6.5,
+    arc: 3,
     startFov: 34,
     endFov: 51,
     startCameraZ: 12,
@@ -111,66 +112,30 @@ function LoadingCurtain({ progress, isReady }: { progress: number; isReady: bool
   );
 }
 
-function ProceduralAirplane() {
-  const materials = useMemo(() => {
-    const body = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#d9d6cc"),
-      roughness: 0.72,
-      metalness: 0.12,
-    });
-    const underside = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#a9a59b"),
-      roughness: 0.78,
-      metalness: 0.08,
-    });
-    const accent = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#FC352E"),
-      roughness: 0.62,
-      metalness: 0.05,
-    });
-    return { body, underside, accent };
-  }, []);
-
-  return (
-    <group rotation={[0, Math.PI, 0]}>
-      <mesh castShadow receiveShadow material={materials.body} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.28, 0.42, 4.7, 32, 1]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.body} position={[0, 0, 2.78]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.36, 0.85, 32]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.underside} position={[0, -0.04, -2.45]} rotation={[-Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.28, 0.72, 32]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.body} position={[0, -0.02, 0.1]}>
-        <boxGeometry args={[4.25, 0.08, 1.04]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.underside} position={[0, -0.1, 0.05]}>
-        <boxGeometry args={[3.45, 0.08, 0.66]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.body} position={[0, 0.02, -2.08]}>
-        <boxGeometry args={[1.55, 0.07, 0.55]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.accent} position={[0, 0.46, -2.22]}>
-        <boxGeometry args={[0.1, 0.9, 0.72]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.accent} position={[0, -0.32, 0.58]}>
-        <boxGeometry args={[0.16, 0.16, 0.48]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.accent} position={[-1.52, 0.035, 0.18]} rotation={[0, 0, 0.06]}>
-        <boxGeometry args={[0.62, 0.055, 0.22]} />
-      </mesh>
-      <mesh castShadow receiveShadow material={materials.accent} position={[1.52, 0.035, 0.18]} rotation={[0, 0, -0.06]}>
-        <boxGeometry args={[0.62, 0.055, 0.22]} />
-      </mesh>
-    </group>
-  );
-}
-
 function AirplaneChoreography() {
+  const { scene } = useGLTF(MODEL_URL);
   const { size } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const profile = getFlightProfile(size.width);
+
+  useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color("#e8e5dc"),
+          roughness: 0.58,
+          metalness: 0.14,
+          clearcoat: 0.18,
+          clearcoatRoughness: 0.46,
+          envMapIntensity: 0.85,
+        });
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.frustumCulled = false;
+      }
+    });
+  }, [scene]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -184,7 +149,7 @@ function AirplaneChoreography() {
     );
 
     const t = THREE.MathUtils.clamp(scrollState.current, 0, 1);
-    const cruise = THREE.MathUtils.smoothstep(t, 0, 0.66);
+    const cruise = THREE.MathUtils.smoothstep(t, 0, 0.64);
     const exit = THREE.MathUtils.smoothstep(t, 0.58, 1);
 
     const x = THREE.MathUtils.lerp(
@@ -201,19 +166,19 @@ function AirplaneChoreography() {
 
     groupRef.current.position.set(x, y, z);
 
-    const roll = t < 0.68
-      ? THREE.MathUtils.lerp(0, Math.PI * 2.05, cruise)
-      : THREE.MathUtils.lerp(Math.PI * 2.05, Math.PI * 2.22, exit);
-    const pitch = THREE.MathUtils.lerp(-0.14, 0.6, cruise) + exit * 0.6;
-    const yaw = THREE.MathUtils.lerp(0.04, -0.8, cruise) + exit * -0.72;
+    const roll = t < 0.66
+      ? THREE.MathUtils.lerp(0, -Math.PI * 1.9, cruise)
+      : THREE.MathUtils.lerp(-Math.PI * 1.9, -Math.PI * 2.04, exit);
+    const pitch = THREE.MathUtils.lerp(-0.12, 0.48, cruise) + exit * 0.58;
+    const yaw = THREE.MathUtils.lerp(-0.02, 0.82, cruise) + exit * 0.62;
 
     groupRef.current.rotation.set(pitch, yaw, roll);
   });
 
   return (
-    <group ref={groupRef} scale={profile.scale}>
-      <Float speed={0.95} rotationIntensity={0.12} floatIntensity={0.22}>
-        <ProceduralAirplane />
+    <group ref={groupRef}>
+      <Float speed={0.95} rotationIntensity={0.1} floatIntensity={0.2}>
+        <primitive object={scene} scale={profile.scale} />
       </Float>
     </group>
   );
@@ -251,21 +216,15 @@ function CameraRig() {
 export default function AirplaneExperience({ globalSettings }: { globalSettings?: HeroSettings }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(true);
-  const [loadProgress, setLoadProgress] = useState(12);
-  const isReady = loadProgress >= 100;
+  const [minimumLoaderElapsed, setMinimumLoaderElapsed] = useState(false);
+  const { active, progress } = useProgress();
+  const loadProgress = minimumLoaderElapsed ? progress : Math.max(12, Math.min(96, progress));
+  const isReady = minimumLoaderElapsed && !active && progress >= 100;
 
   useEffect(() => {
-    let raf = 0;
-    const startedAt = performance.now();
-    const tick = (now: number) => {
-      const elapsed = now - startedAt;
-      const nextProgress = Math.min(100, 12 + (elapsed / 620) * 88);
-      setLoadProgress(nextProgress);
-      if (nextProgress < 100) raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    useGLTF.preload(MODEL_URL);
+    const minimumTimer = window.setTimeout(() => setMinimumLoaderElapsed(true), 520);
+    return () => window.clearTimeout(minimumTimer);
   }, []);
 
   useEffect(() => {
@@ -378,8 +337,9 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
           }}
           shadows
         >
-          <CameraRig />
-          <ambientLight intensity={0.34} />
+          <Suspense fallback={null}>
+            <CameraRig />
+            <ambientLight intensity={0.34} />
           <hemisphereLight intensity={0.28} color="#f3efe7" groundColor="#070707" />
           <directionalLight
             position={[8, 9, 7]}
@@ -391,9 +351,10 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
           <pointLight position={[-3.2, 1.4, 4.5]} intensity={7.5} color="#FC352E" distance={32} />
           <pointLight position={[3, -2, 6]} intensity={2.2} color="#fff6e8" distance={24} />
           <AirplaneChoreography />
-          <EffectComposer multisampling={2}>
-            <Bloom luminanceThreshold={0.78} luminanceSmoothing={0.42} height={360} opacity={0.16} />
-          </EffectComposer>
+            <EffectComposer multisampling={2}>
+              <Bloom luminanceThreshold={0.78} luminanceSmoothing={0.42} height={360} opacity={0.16} />
+            </EffectComposer>
+          </Suspense>
         </Canvas>
       </div>
 
@@ -417,3 +378,5 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
     </div>
   );
 }
+
+useGLTF.preload(MODEL_URL);
