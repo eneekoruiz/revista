@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/immutability */
 "use client";
 
-import React, { useRef, useEffect, useState, Suspense } from "react";
+import React, { useMemo, useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, useGLTF, Float, Preload } from "@react-three/drei";
+import { Float } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -11,7 +11,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const MODEL_URL = "https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/scenegraph-layer/airplane.glb";
 const scrollState = { target: 0, current: 0 };
 
 interface HeroSettings {
@@ -26,90 +25,152 @@ function getFlightProfile(width: number) {
 
   if (isMobile) {
     return {
-      scale: 0.052,
-      startX: 0.25,
-      midX: -0.9,
-      exitX: -8.8,
+      scale: 0.86,
+      startX: 0.2,
+      midX: -0.65,
+      exitX: -11.5,
       startY: -0.05,
-      exitY: 4.8,
-      startZ: 3.6,
-      midZ: -6,
-      exitZ: -17,
-      arc: 2.35,
-      startFov: 54,
-      endFov: 66,
+      exitY: 8.2,
+      startZ: 3.8,
+      midZ: -5.8,
+      exitZ: -4.5,
+      arc: 2.25,
+      startFov: 53,
+      endFov: 62,
       startCameraZ: 20,
-      endCameraZ: 26,
-      cameraY: 0.2,
-      smoothing: 4.25,
+      endCameraZ: 23,
+      cameraY: 0.18,
+      smoothing: 4.8,
     };
   }
 
   if (isTablet) {
     return {
-      scale: 0.058,
-      startX: 1,
-      midX: -1.8,
-      exitX: -13.5,
+      scale: 1,
+      startX: 0.95,
+      midX: -1.45,
+      exitX: -16,
       startY: -0.05,
-      exitY: 5.4,
+      exitY: 9.8,
       startZ: 6,
-      midZ: -9,
-      exitZ: -25,
-      arc: 2.8,
-      startFov: 44,
-      endFov: 60,
+      midZ: -8.5,
+      exitZ: -6,
+      arc: 2.7,
+      startFov: 43,
+      endFov: 56,
       startCameraZ: 16,
-      endCameraZ: 22,
-      cameraY: 0.05,
-      smoothing: 4.6,
+      endCameraZ: 19.5,
+      cameraY: 0.04,
+      smoothing: 5.1,
     };
   }
 
   return {
-    scale: 0.064,
-    startX: 2.2,
-    midX: -2.4,
-    exitX: -20,
+    scale: 1.08,
+    startX: 2.1,
+    midX: -2.1,
+    exitX: -25,
     startY: 0,
-    exitY: 6.8,
+    exitY: 12.5,
     startZ: 8,
-    midZ: -12,
-    exitZ: -38,
-    arc: 3.25,
+    midZ: -11,
+    exitZ: -7,
+    arc: 3.05,
     startFov: 34,
-    endFov: 56,
+    endFov: 51,
     startCameraZ: 12,
-    endCameraZ: 19,
+    endCameraZ: 16.5,
     cameraY: 0,
-    smoothing: 5,
+    smoothing: 5.5,
   };
 }
 
+function LoadingCurtain({ progress, isReady }: { progress: number; isReady: boolean }) {
+  return (
+    <div
+      className={`absolute inset-0 z-40 flex items-center justify-center bg-black transition-opacity duration-500 ${
+        isReady ? "pointer-events-none opacity-0" : "opacity-100"
+      }`}
+      aria-hidden={isReady}
+    >
+      <div className="w-full max-w-[34rem] px-8 text-center">
+        <p className="font-anton uppercase leading-none text-[#FC352E]" style={{ fontSize: "clamp(3.1rem, 13vw, 7rem)" }}>
+          Cargando
+        </p>
+        <p className="mt-1 font-poppins text-[0.62rem] font-black uppercase tracking-[0.44em] text-white/70 sm:text-xs">
+          Vuelo {Math.min(100, Math.round(progress))}%
+        </p>
+        <div className="mt-6 h-[3px] w-full bg-white/10">
+          <div
+            className="h-full bg-[#FC352E] transition-[width] duration-150 ease-out"
+            style={{ width: `${Math.min(100, Math.max(10, progress))}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProceduralAirplane() {
+  const materials = useMemo(() => {
+    const body = new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#d9d6cc"),
+      roughness: 0.72,
+      metalness: 0.12,
+    });
+    const underside = new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#a9a59b"),
+      roughness: 0.78,
+      metalness: 0.08,
+    });
+    const accent = new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#FC352E"),
+      roughness: 0.62,
+      metalness: 0.05,
+    });
+    return { body, underside, accent };
+  }, []);
+
+  return (
+    <group rotation={[0, Math.PI, 0]}>
+      <mesh castShadow receiveShadow material={materials.body} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.28, 0.42, 4.7, 32, 1]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.body} position={[0, 0, 2.78]} rotation={[Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.36, 0.85, 32]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.underside} position={[0, -0.04, -2.45]} rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.28, 0.72, 32]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.body} position={[0, -0.02, 0.1]}>
+        <boxGeometry args={[4.25, 0.08, 1.04]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.underside} position={[0, -0.1, 0.05]}>
+        <boxGeometry args={[3.45, 0.08, 0.66]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.body} position={[0, 0.02, -2.08]}>
+        <boxGeometry args={[1.55, 0.07, 0.55]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.accent} position={[0, 0.46, -2.22]}>
+        <boxGeometry args={[0.1, 0.9, 0.72]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.accent} position={[0, -0.32, 0.58]}>
+        <boxGeometry args={[0.16, 0.16, 0.48]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.accent} position={[-1.52, 0.035, 0.18]} rotation={[0, 0, 0.06]}>
+        <boxGeometry args={[0.62, 0.055, 0.22]} />
+      </mesh>
+      <mesh castShadow receiveShadow material={materials.accent} position={[1.52, 0.035, 0.18]} rotation={[0, 0, -0.06]}>
+        <boxGeometry args={[0.62, 0.055, 0.22]} />
+      </mesh>
+    </group>
+  );
+}
+
 function AirplaneChoreography() {
-  const { scene } = useGLTF(MODEL_URL);
   const { size } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const profile = getFlightProfile(size.width);
-
-  useEffect(() => {
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        mesh.material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color("#f4f4f1"),
-          roughness: 0.28,
-          metalness: 0.48,
-          clearcoat: 0.55,
-          clearcoatRoughness: 0.18,
-          envMapIntensity: 2.8,
-        });
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.frustumCulled = false;
-      }
-    });
-  }, [scene]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -123,8 +184,8 @@ function AirplaneChoreography() {
     );
 
     const t = THREE.MathUtils.clamp(scrollState.current, 0, 1);
-    const cruise = THREE.MathUtils.smoothstep(t, 0, 0.72);
-    const exit = THREE.MathUtils.smoothstep(t, 0.64, 1);
+    const cruise = THREE.MathUtils.smoothstep(t, 0, 0.66);
+    const exit = THREE.MathUtils.smoothstep(t, 0.58, 1);
 
     const x = THREE.MathUtils.lerp(
       THREE.MathUtils.lerp(profile.startX, profile.midX, cruise),
@@ -140,19 +201,19 @@ function AirplaneChoreography() {
 
     groupRef.current.position.set(x, y, z);
 
-    const roll = t < 0.72
-      ? THREE.MathUtils.lerp(0, Math.PI * 2.2, cruise)
-      : THREE.MathUtils.lerp(Math.PI * 2.2, Math.PI * 2.55, exit);
-    const pitch = THREE.MathUtils.lerp(-0.16, 0.72, cruise) + exit * 0.45;
-    const yaw = THREE.MathUtils.lerp(0.05, -0.95, cruise) + exit * -0.5;
+    const roll = t < 0.68
+      ? THREE.MathUtils.lerp(0, Math.PI * 2.05, cruise)
+      : THREE.MathUtils.lerp(Math.PI * 2.05, Math.PI * 2.22, exit);
+    const pitch = THREE.MathUtils.lerp(-0.14, 0.6, cruise) + exit * 0.6;
+    const yaw = THREE.MathUtils.lerp(0.04, -0.8, cruise) + exit * -0.72;
 
     groupRef.current.rotation.set(pitch, yaw, roll);
   });
 
   return (
-    <group ref={groupRef}>
-      <Float speed={1.15} rotationIntensity={0.18} floatIntensity={0.32}>
-        <primitive object={scene} scale={profile.scale} />
+    <group ref={groupRef} scale={profile.scale}>
+      <Float speed={0.95} rotationIntensity={0.12} floatIntensity={0.22}>
+        <ProceduralAirplane />
       </Float>
     </group>
   );
@@ -170,16 +231,16 @@ function CameraRig() {
     perspectiveCamera.fov = THREE.MathUtils.damp(
       perspectiveCamera.fov,
       THREE.MathUtils.lerp(profile.startFov, profile.endFov, t),
-      7,
+      7.5,
       dt
     );
     camera.position.z = THREE.MathUtils.damp(
       camera.position.z,
       THREE.MathUtils.lerp(profile.startCameraZ, profile.endCameraZ, t),
-      7,
+      7.5,
       dt
     );
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, profile.cameraY, 7, dt);
+    camera.position.y = THREE.MathUtils.damp(camera.position.y, profile.cameraY, 7.5, dt);
     camera.lookAt(0, 0.15, 0);
     perspectiveCamera.updateProjectionMatrix();
   });
@@ -190,8 +251,49 @@ function CameraRig() {
 export default function AirplaneExperience({ globalSettings }: { globalSettings?: HeroSettings }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(12);
+  const isReady = loadProgress >= 100;
 
   useEffect(() => {
+    let raf = 0;
+    const startedAt = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startedAt;
+      const nextProgress = Math.min(100, 12 + (elapsed / 620) * 88);
+      setLoadProgress(nextProgress);
+      if (nextProgress < 100) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+
+    if (!isReady) {
+      document.body.style.overflow = "hidden";
+      document.body.style.overscrollBehavior = "none";
+      return () => {
+        document.body.style.overflow = previousOverflow;
+        document.body.style.overscrollBehavior = previousOverscroll;
+      };
+    }
+
+    document.body.style.overflow = previousOverflow;
+    document.body.style.overscrollBehavior = previousOverscroll;
+    ScrollTrigger.refresh();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [isReady]);
+
+  useEffect(() => {
+    if (!isReady) return;
+
     ScrollTrigger.config({ ignoreMobileResize: true, autoRefreshEvents: "visibilitychange,DOMContentLoaded,load" });
 
     const el = containerRef.current;
@@ -203,9 +305,10 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
     const st = ScrollTrigger.create({
       trigger: el,
       start: "top top",
-      end: () => `+=${Math.max(window.innerHeight * 2.2, 1300)}`,
+      end: () => `+=${Math.max(window.innerHeight * 2.05, 1180)}`,
       pin: true,
-      scrub: 2.2,
+      pinSpacing: true,
+      scrub: 2.35,
       anticipatePin: 1,
       invalidateOnRefresh: true,
       fastScrollEnd: false,
@@ -215,6 +318,7 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
       },
       onLeave() {
         scrollState.target = 1;
+        scrollState.current = 1;
         setIsActive(false);
       },
       onEnter() {
@@ -231,65 +335,69 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
       },
     });
 
+    requestAnimationFrame(() => ScrollTrigger.refresh());
+
     return () => st.kill();
-  }, []);
+  }, [isReady]);
 
   return (
     <div ref={containerRef} className="relative w-full bg-black overflow-hidden h-[100svh] min-h-[600px] md:h-[100vh]">
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6">
-        <h1
-          className="font-anton text-center uppercase leading-[0.86] md:leading-[0.88]"
-          style={{ fontSize: "clamp(3.85rem, 18vw, 10.6rem)", letterSpacing: "0" }}
-        >
-          <span className="block text-[#FC352E] drop-shadow-[0_0_22px_rgba(252,53,46,0.46)]">
+      <LoadingCurtain progress={loadProgress} isReady={isReady} />
+
+      <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6 transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
+        <h1 className="font-anton text-center uppercase leading-[0.86] md:leading-[0.88]" style={{ letterSpacing: "0" }}>
+          <span
+            className="block text-[#FC352E] drop-shadow-[0_0_12px_rgba(252,53,46,0.22)]"
+            style={{ fontSize: "clamp(4rem, 18vw, 10.8rem)" }}
+          >
             {globalSettings?.heroTitleLine1 || "RAK$ CLUB"}
           </span>
-          <span className="block text-white drop-shadow-[0_0_26px_rgba(252,53,46,0.38)]">
+          <span
+            className="mt-2 block font-poppins font-black uppercase text-white/88"
+            style={{ fontSize: "clamp(0.95rem, 4.6vw, 2.65rem)", letterSpacing: "clamp(0.34rem, 2.4vw, 1.35rem)" }}
+          >
             {globalSettings?.heroTitleLine2 || "MAGAZINE"}
           </span>
         </h1>
-        <p className="mt-5 max-w-[92vw] text-center text-white/38 font-poppins font-bold uppercase tracking-[0.22em] text-[clamp(0.56rem,2vw,0.85rem)] sm:tracking-[0.32em] md:mt-6">
+        <p className="mt-6 max-w-[92vw] text-center text-white/36 font-poppins font-bold uppercase tracking-[0.22em] text-[clamp(0.56rem,2vw,0.85rem)] sm:tracking-[0.32em]">
           {globalSettings?.heroTagline || "Cultura Urbana · Norte de España"}
         </p>
       </div>
 
-      <div className="absolute inset-0 z-20 pointer-events-none">
+      <div className={`absolute inset-0 z-20 pointer-events-none transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
         <Canvas
           frameloop={isActive ? "always" : "never"}
-          dpr={[1.25, 2]}
+          dpr={[1.1, 1.65]}
           gl={{
             antialias: true,
             alpha: true,
             powerPreference: "high-performance",
             toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 0.82,
             outputColorSpace: THREE.SRGBColorSpace,
           }}
           shadows
         >
-          <Suspense fallback={null}>
-            <CameraRig />
-            <ambientLight intensity={0.72} />
-            <hemisphereLight intensity={0.55} color="#ffffff" groundColor="#080808" />
-            <directionalLight
-              position={[8, 9, 7]}
-              intensity={4.4}
-              castShadow
-              shadow-mapSize={[2048, 2048]}
-              shadow-bias={-0.00008}
-            />
-            <pointLight position={[-2.8, 1.2, 4]} intensity={34} color="#FC352E" distance={42} />
-            <pointLight position={[3, -2, 6]} intensity={10} color="#ffffff" distance={26} />
-            <Environment preset="studio" environmentIntensity={1.35} />
-            <AirplaneChoreography />
-            <EffectComposer multisampling={4}>
-              <Bloom luminanceThreshold={0.28} luminanceSmoothing={0.72} height={720} opacity={1.2} />
-            </EffectComposer>
-            <Preload all />
-          </Suspense>
+          <CameraRig />
+          <ambientLight intensity={0.34} />
+          <hemisphereLight intensity={0.28} color="#f3efe7" groundColor="#070707" />
+          <directionalLight
+            position={[8, 9, 7]}
+            intensity={1.75}
+            castShadow
+            shadow-mapSize={[1536, 1536]}
+            shadow-bias={-0.00008}
+          />
+          <pointLight position={[-3.2, 1.4, 4.5]} intensity={7.5} color="#FC352E" distance={32} />
+          <pointLight position={[3, -2, 6]} intensity={2.2} color="#fff6e8" distance={24} />
+          <AirplaneChoreography />
+          <EffectComposer multisampling={2}>
+            <Bloom luminanceThreshold={0.78} luminanceSmoothing={0.42} height={360} opacity={0.16} />
+          </EffectComposer>
         </Canvas>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-3">
+      <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-3 transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
         <span
           className="text-white/50 font-poppins font-bold uppercase tracking-[0.3em] animate-pulse"
           style={{ fontSize: "0.58rem" }}
@@ -309,5 +417,3 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
     </div>
   );
 }
-
-useGLTF.preload(MODEL_URL);
