@@ -29,7 +29,7 @@ function getFlightProfile(width: number) {
       scale: 0.052,
       startX: -0.55,
       midX: 0.25,
-      exitX: 12.5,
+      exitX: -12.5,
       startY: -0.05,
       exitY: 9.5,
       startZ: 3.8,
@@ -50,7 +50,7 @@ function getFlightProfile(width: number) {
       scale: 0.058,
       startX: -0.8,
       midX: 1.25,
-      exitX: 17.5,
+      exitX: -17.5,
       startY: -0.05,
       exitY: 11,
       startZ: 6,
@@ -70,7 +70,7 @@ function getFlightProfile(width: number) {
     scale: 0.064,
     startX: -1.6,
     midX: 2.3,
-    exitX: 27,
+    exitX: -27,
     startY: 0,
     exitY: 14,
     startZ: 8,
@@ -123,12 +123,14 @@ function AirplaneChoreography() {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color("#e8e5dc"),
-          roughness: 0.58,
-          metalness: 0.14,
-          clearcoat: 0.18,
-          clearcoatRoughness: 0.46,
-          envMapIntensity: 0.85,
+          color: new THREE.Color("#ffffff"),
+          roughness: 0.2,
+          metalness: 0.8,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.1,
+          envMapIntensity: 1.5,
+          emissive: new THREE.Color("#ffffff"),
+          emissiveIntensity: 0.15,
         });
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -170,15 +172,21 @@ function AirplaneChoreography() {
       ? THREE.MathUtils.lerp(0, -Math.PI * 1.9, cruise)
       : THREE.MathUtils.lerp(-Math.PI * 1.9, -Math.PI * 2.04, exit);
     const pitch = THREE.MathUtils.lerp(-0.12, 0.48, cruise) + exit * 0.58;
-    const yaw = THREE.MathUtils.lerp(-0.02, 0.82, cruise) + exit * 0.62;
+    // yaw transitions from a rightward arc back to leftward facing so the nose
+    // always points left as the plane exits stage-left
+    const yaw = THREE.MathUtils.lerp(-0.02, 0.82, cruise) - exit * 1.05;
 
     groupRef.current.rotation.set(pitch, yaw, roll);
   });
 
   return (
     <group ref={groupRef}>
-      <Float speed={0.95} rotationIntensity={0.1} floatIntensity={0.2}>
+      <Float speed={0.95} rotationIntensity={0.08} floatIntensity={0.18}>
         <primitive object={scene} scale={profile.scale} />
+        {/* White halo light — makes the fuselage glow like a mini spotlight */}
+        <pointLight intensity={6} distance={12} color="#ffffff" decay={2} />
+        {/* Red accent light attached to the airplane — reflections follow it throughout the flight */}
+        <pointLight position={[0, 0.5, 2]} intensity={18} distance={20} color="#FC352E" decay={2} />
       </Float>
     </group>
   );
@@ -306,8 +314,11 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
       <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6 transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
         <h1 className="font-anton text-center uppercase leading-[0.86] md:leading-[0.88]" style={{ letterSpacing: "0" }}>
           <span
-            className="block text-[#FC352E] drop-shadow-[0_0_12px_rgba(252,53,46,0.22)]"
-            style={{ fontSize: "clamp(4rem, 18vw, 10.8rem)" }}
+            className="block text-[#FC352E]"
+            style={{
+              fontSize: "clamp(4rem, 18vw, 10.8rem)",
+              textShadow: "0 0 18px rgba(252,53,46,0.55), 0 0 60px rgba(252,53,46,0.22), 0 0 120px rgba(252,53,46,0.1)"
+            }}
           >
             {globalSettings?.heroTitleLine1 || "RAK$ CLUB"}
           </span>
@@ -332,7 +343,7 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
             alpha: true,
             powerPreference: "high-performance",
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 0.82,
+            toneMappingExposure: 1.12,
             outputColorSpace: THREE.SRGBColorSpace,
           }}
           shadows
@@ -348,11 +359,15 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
             shadow-mapSize={[1536, 1536]}
             shadow-bias={-0.00008}
           />
-          <pointLight position={[-3.2, 1.4, 4.5]} intensity={7.5} color="#FC352E" distance={32} />
+          {/* Ambient red fill from the left — subtle scene mood */}
+          <pointLight position={[-3.2, 1.4, 4.5]} intensity={8} color="#FC352E" distance={40} />
           <pointLight position={[3, -2, 6]} intensity={2.2} color="#fff6e8" distance={24} />
           <AirplaneChoreography />
-            <EffectComposer multisampling={2}>
-              <Bloom luminanceThreshold={0.78} luminanceSmoothing={0.42} height={360} opacity={0.16} />
+            <EffectComposer multisampling={4}>
+              {/* Tight bloom — the bright white fuselage and red lights */}
+              <Bloom luminanceThreshold={0.55} luminanceSmoothing={0.3} height={480} intensity={1.8} />
+              {/* Wide soft halo — cinematic light bleed around the plane */}
+              <Bloom luminanceThreshold={0.85} luminanceSmoothing={0.9} height={200} intensity={0.6} />
             </EffectComposer>
           </Suspense>
         </Canvas>
