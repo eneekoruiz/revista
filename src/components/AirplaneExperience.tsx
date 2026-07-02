@@ -26,7 +26,7 @@ function getFlightProfile(width: number) {
 
   if (isMobile) {
     return {
-      scale: 0.052,
+      scale: 0.062,
       startX: -0.55,
       midX: 0.25,
       exitX: 0.1,
@@ -152,7 +152,8 @@ function AirplaneChoreography() {
 
     const t = THREE.MathUtils.clamp(scrollState.current, 0, 1);
     const cruise = THREE.MathUtils.smoothstep(t, 0, 0.64);
-    const exit = THREE.MathUtils.smoothstep(t, 0.58, 1);
+    // Exit starts later so the loop fully completes before the dive begins
+    const exit = THREE.MathUtils.smoothstep(t, 0.65, 1);
 
     const x = THREE.MathUtils.lerp(
       THREE.MathUtils.lerp(profile.startX, profile.midX, cruise),
@@ -171,11 +172,15 @@ function AirplaneChoreography() {
     const roll = t < 0.66
       ? THREE.MathUtils.lerp(0, -Math.PI * 1.9, cruise)
       : THREE.MathUtils.lerp(-Math.PI * 1.9, -Math.PI * 2.04, exit);
-    // pitch dives steeply nose-down during exit — the plane points toward
-    // the bottom of the screen where the page content begins
-    const pitch = THREE.MathUtils.lerp(-0.12, 0.48, cruise) - exit * 1.55;
-    // yaw returns to ~0 during exit so the nose faces forward/down, not sideways
-    const yaw = THREE.MathUtils.lerp(-0.02, 0.82, cruise) - exit * 0.82;
+
+    // Lerp FROM the cruise value so there is no additive fight — the
+    // transition from loop to dive is a single smooth arc with no jerk.
+    const pitchCruise = THREE.MathUtils.lerp(-0.12, 0.32, cruise);
+    const pitch = THREE.MathUtils.lerp(pitchCruise, -1.3, exit);
+
+    // Yaw smoothly returns toward 0 so the nose faces forward/down during the dive
+    const yawCruise = THREE.MathUtils.lerp(-0.02, 0.82, cruise);
+    const yaw = THREE.MathUtils.lerp(yawCruise, 0.04, exit);
 
     groupRef.current.rotation.set(pitch, yaw, roll);
   });
