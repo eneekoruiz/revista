@@ -29,12 +29,12 @@ function getFlightProfile(width: number) {
       scale: 0.052,
       startX: -0.55,
       midX: 0.25,
-      exitX: -12.5,
+      exitX: 0.1,
       startY: -0.05,
-      exitY: 9.5,
+      exitY: -12,
       startZ: 3.8,
       midZ: -5.8,
-      exitZ: -4.2,
+      exitZ: 1.5,
       arc: 2.15,
       startFov: 53,
       endFov: 62,
@@ -50,12 +50,12 @@ function getFlightProfile(width: number) {
       scale: 0.058,
       startX: -0.8,
       midX: 1.25,
-      exitX: -17.5,
+      exitX: 0.1,
       startY: -0.05,
-      exitY: 11,
+      exitY: -16,
       startZ: 6,
       midZ: -8.5,
-      exitZ: -5.5,
+      exitZ: 2,
       arc: 2.6,
       startFov: 43,
       endFov: 56,
@@ -70,12 +70,12 @@ function getFlightProfile(width: number) {
     scale: 0.064,
     startX: -1.6,
     midX: 2.3,
-    exitX: -27,
+    exitX: 0.1,
     startY: 0,
-    exitY: 14,
+    exitY: -20,
     startZ: 8,
     midZ: -11,
-    exitZ: -6.5,
+    exitZ: 3,
     arc: 3,
     startFov: 34,
     endFov: 51,
@@ -171,10 +171,11 @@ function AirplaneChoreography() {
     const roll = t < 0.66
       ? THREE.MathUtils.lerp(0, -Math.PI * 1.9, cruise)
       : THREE.MathUtils.lerp(-Math.PI * 1.9, -Math.PI * 2.04, exit);
-    const pitch = THREE.MathUtils.lerp(-0.12, 0.48, cruise) + exit * 0.58;
-    // yaw transitions from a rightward arc back to leftward facing so the nose
-    // always points left as the plane exits stage-left
-    const yaw = THREE.MathUtils.lerp(-0.02, 0.82, cruise) - exit * 1.05;
+    // pitch dives steeply nose-down during exit — the plane points toward
+    // the bottom of the screen where the page content begins
+    const pitch = THREE.MathUtils.lerp(-0.12, 0.48, cruise) - exit * 1.55;
+    // yaw returns to ~0 during exit so the nose faces forward/down, not sideways
+    const yaw = THREE.MathUtils.lerp(-0.02, 0.82, cruise) - exit * 0.82;
 
     groupRef.current.rotation.set(pitch, yaw, roll);
   });
