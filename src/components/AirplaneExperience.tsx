@@ -230,16 +230,40 @@ function CameraRig() {
 export default function AirplaneExperience({ globalSettings }: { globalSettings?: HeroSettings }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(true);
-  const [minimumLoaderElapsed, setMinimumLoaderElapsed] = useState(false);
+  const [showIdleHint, setShowIdleHint] = useState(false);
   const { active, progress } = useProgress();
-  const loadProgress = minimumLoaderElapsed ? progress : Math.max(12, Math.min(96, progress));
-  const isReady = minimumLoaderElapsed && !active && progress >= 100;
+  // Remove artificial delay to maximize performance. If cached, it enters instantly.
+  const isReady = !active && progress >= 100;
 
   useEffect(() => {
     useGLTF.preload(MODEL_URL);
-    const minimumTimer = window.setTimeout(() => setMinimumLoaderElapsed(true), 520);
-    return () => window.clearTimeout(minimumTimer);
   }, []);
+
+  // Show a "keep scrolling" nudge if the user idles mid-animation for 3+ seconds
+  useEffect(() => {
+    if (!isReady) return;
+    let lastTarget = scrollState.target;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const check = () => {
+      const t = scrollState.target;
+      const isInsideAnimation = t > 0.04 && t < 0.92;
+      const isStuck = Math.abs(t - lastTarget) < 0.002;
+
+      if (isInsideAnimation && isStuck) {
+        if (!idleTimer) {
+          idleTimer = setTimeout(() => setShowIdleHint(true), 3000);
+        }
+      } else {
+        if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+        setShowIdleHint(false);
+        lastTarget = t;
+      }
+    };
+
+    const interval = setInterval(check, 400);
+    return () => { clearInterval(interval); if (idleTimer) clearTimeout(idleTimer); };
+  }, [isReady]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -315,7 +339,7 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
 
   return (
     <div ref={containerRef} className="relative w-full bg-black overflow-hidden h-[100svh] min-h-[600px] md:h-[100vh]">
-      <LoadingCurtain progress={loadProgress} isReady={isReady} />
+      <LoadingCurtain progress={progress} isReady={isReady} />
 
       <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6 transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
         <h1 className="font-anton text-center uppercase leading-[0.86] md:leading-[0.88]" style={{ letterSpacing: "0" }}>
@@ -379,21 +403,64 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
         </Canvas>
       </div>
 
-      <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-3 transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
+      {/* ── Scroll indicator ─────────────────────────────────────────── */}
+      {/* Hides once the animation completes (isActive becomes false) */}
+      <div
+        className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-2 transition-all duration-700 ${
+          isReady && isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+        }`}
+      >
         <span
-          className="text-white/50 font-poppins font-bold uppercase tracking-[0.3em] animate-pulse"
-          style={{ fontSize: "0.58rem" }}
+          className="font-anton uppercase text-white/70 tracking-[0.28em]"
+          style={{ fontSize: "0.72rem", textShadow: "0 0 14px rgba(252,53,46,0.5)" }}
         >
           Scroll para entrar
         </span>
-        <div className="relative w-px h-10 bg-white/10 overflow-hidden">
-          <div
-            className="absolute top-0 left-0 w-full bg-white/60"
-            style={{
-              height: "40%",
-              animation: "slideDown 1.6s ease-in-out infinite",
-            }}
-          />
+        {/* Animated chevron arrows — no line, just motion */}
+        <div className="flex flex-col items-center gap-[3px]">
+          {[0, 1, 2].map((i) => (
+            <svg
+              key={i}
+              width="16"
+              height="9"
+              viewBox="0 0 16 9"
+              fill="none"
+              style={{
+                animation: `scrollChevron 1.4s ease-in-out infinite`,
+                animationDelay: `${i * 0.2}s`,
+                opacity: 1 - i * 0.28,
+              }}
+            >
+              <polyline
+                points="1,1 8,8 15,1"
+                stroke="#FC352E"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Idle hint ───────────────────────────────────────────────── */}
+      {/* Appears after 3 s of the user being stuck mid-animation */}
+      <div
+        className={`absolute bottom-28 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-500 ${
+          showIdleHint ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+        }`}
+      >
+        <div
+          className="flex items-center gap-3 border border-[#FC352E]/40 bg-black/70 px-5 py-2.5 backdrop-blur-sm"
+          style={{ boxShadow: "0 0 24px rgba(252,53,46,0.18)" }}
+        >
+          <span
+            className="font-poppins font-black uppercase tracking-[0.3em] text-white"
+            style={{ fontSize: "0.6rem" }}
+          >
+            Sigue scrolleando
+          </span>
+          <span className="text-[#FC352E] font-bold" style={{ fontSize: "0.75rem" }}>↓</span>
         </div>
       </div>
     </div>
