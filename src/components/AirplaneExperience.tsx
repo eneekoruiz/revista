@@ -86,32 +86,6 @@ function getFlightProfile(width: number) {
   };
 }
 
-function LoadingCurtain({ progress, isReady }: { progress: number; isReady: boolean }) {
-  return (
-    <div
-      className={`absolute inset-0 z-40 flex items-center justify-center bg-black transition-opacity duration-500 ${
-        isReady ? "pointer-events-none opacity-0" : "opacity-100"
-      }`}
-      aria-hidden={isReady}
-    >
-      <div className="w-full max-w-[34rem] px-8 text-center">
-        <p className="font-anton uppercase leading-none text-[#FC352E]" style={{ fontSize: "clamp(3.1rem, 13vw, 7rem)" }}>
-          Cargando
-        </p>
-        <p className="mt-1 font-poppins text-[0.62rem] font-black uppercase tracking-[0.44em] text-white/70 sm:text-xs">
-          Vuelo {Math.min(100, Math.round(progress))}%
-        </p>
-        <div className="mt-6 h-[3px] w-full bg-white/10">
-          <div
-            className="h-full bg-[#FC352E] transition-[width] duration-150 ease-out"
-            style={{ width: `${Math.min(100, Math.max(10, progress))}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AirplaneChoreography() {
   const { scene } = useGLTF(MODEL_URL);
   const { size } = useThree();
@@ -231,17 +205,52 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
   const containerRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(true);
   const [showIdleHint, setShowIdleHint] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [shouldActivateTrigger, setShouldActivateTrigger] = useState(false);
   const { active, progress } = useProgress();
   // Remove artificial delay to maximize performance. If cached, it enters instantly.
   const isReady = !active && progress >= 100;
 
   useEffect(() => {
+    let active = true;
+    requestAnimationFrame(() => {
+      if (active) setMounted(true);
+    });
     useGLTF.preload(MODEL_URL);
+    return () => {
+      active = false;
+    };
   }, []);
+
+  // Listen to scroll to activate pinning once the model is ready, preventing layout jumps
+  useEffect(() => {
+    if (!isReady) return;
+
+    let active = true;
+    const handleScrollCheck = () => {
+      if (window.scrollY < 100) {
+        if (active) setShouldActivateTrigger(true);
+        window.removeEventListener("scroll", handleScrollCheck);
+      }
+    };
+
+    if (window.scrollY < 100) {
+      requestAnimationFrame(() => {
+        if (active) setShouldActivateTrigger(true);
+      });
+    } else {
+      window.addEventListener("scroll", handleScrollCheck, { passive: true });
+    }
+
+    return () => {
+      active = false;
+      window.removeEventListener("scroll", handleScrollCheck);
+    };
+  }, [isReady]);
 
   // Show a "keep scrolling" nudge if the user idles mid-animation for 3+ seconds
   useEffect(() => {
-    if (!isReady) return;
+    if (!shouldActivateTrigger) return;
     let lastTarget = scrollState.target;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -263,33 +272,16 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
 
     const interval = setInterval(check, 400);
     return () => { clearInterval(interval); if (idleTimer) clearTimeout(idleTimer); };
-  }, [isReady]);
+  }, [shouldActivateTrigger]);
 
+  // Refresh ScrollTrigger when pinning is activated
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscroll = document.body.style.overscrollBehavior;
-
-    if (!isReady) {
-      document.body.style.overflow = "hidden";
-      document.body.style.overscrollBehavior = "none";
-      return () => {
-        document.body.style.overflow = previousOverflow;
-        document.body.style.overscrollBehavior = previousOverscroll;
-      };
-    }
-
-    document.body.style.overflow = previousOverflow;
-    document.body.style.overscrollBehavior = previousOverscroll;
+    if (!shouldActivateTrigger) return;
     ScrollTrigger.refresh();
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscroll;
-    };
-  }, [isReady]);
+  }, [shouldActivateTrigger]);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!shouldActivateTrigger) return;
 
     ScrollTrigger.config({ ignoreMobileResize: true, autoRefreshEvents: "visibilitychange,DOMContentLoaded,load" });
 
@@ -335,13 +327,12 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
     requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => st.kill();
-  }, [isReady]);
+  }, [shouldActivateTrigger]);
 
   return (
     <div ref={containerRef} className="relative w-full bg-black overflow-hidden h-[100svh] min-h-[600px] md:h-[100vh]">
-      <LoadingCurtain progress={progress} isReady={isReady} />
 
-      <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6 transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
+      <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none select-none px-4 sm:px-6 transition-opacity duration-700 ${mounted ? "opacity-100" : "opacity-0"}`}>
         <h1 className="font-anton text-center uppercase leading-[0.86] md:leading-[0.88]" style={{ letterSpacing: "0" }}>
           <span
             className="block text-[#FC352E]"
@@ -362,9 +353,26 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
         <p className="mt-6 max-w-[92vw] text-center text-white/36 font-poppins font-bold uppercase tracking-[0.22em] text-[clamp(0.56rem,2vw,0.85rem)] sm:tracking-[0.32em]">
           {globalSettings?.heroTagline || "Cultura Urbana · Norte de España"}
         </p>
+
+        {/* Brutalist inline loader */}
+        <div
+          className={`mt-8 flex flex-col items-center gap-2 transition-all duration-500 ${
+            isReady ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"
+          }`}
+        >
+          <span className="font-poppins text-[0.62rem] font-black uppercase tracking-[0.44em] text-white/50">
+            Cargando experiencia 3D {Math.min(100, Math.round(progress))}%
+          </span>
+          <div className="h-[2px] w-40 bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-[#FC352E] transition-[width] duration-150 ease-out"
+              style={{ width: `${Math.min(100, Math.max(10, progress))}%` }}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className={`absolute inset-0 z-20 pointer-events-none transition-opacity duration-500 ${isReady ? "opacity-100" : "opacity-0"}`}>
+      <div className={`absolute inset-0 z-20 pointer-events-none transition-opacity duration-500 ${shouldActivateTrigger ? "opacity-100" : "opacity-0"}`}>
         <Canvas
           frameloop={isActive ? "always" : "never"}
           dpr={[1.1, 1.65]}
@@ -407,7 +415,7 @@ export default function AirplaneExperience({ globalSettings }: { globalSettings?
       {/* Hides once the animation completes (isActive becomes false) */}
       <div
         className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-2 transition-all duration-700 ${
-          isReady && isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+          shouldActivateTrigger && isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
         }`}
       >
         <span
