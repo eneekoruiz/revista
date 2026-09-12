@@ -1,6 +1,12 @@
 # RAK$ CLUB MAGAZINE - Frontend & CMS Architecture
 
+[![CI — Build](https://github.com/eneekoruiz/revista/actions/workflows/ci.yml/badge.svg)](https://github.com/eneekoruiz/revista/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/Demo-revista--omega.vercel.app-0070f3?style=flat&logo=vercel&logoColor=white)](https://revista-omega.vercel.app)
+
+> 🌐 **Despliegue en vivo:** [https://revista-omega.vercel.app](https://revista-omega.vercel.app)
+
 Bienvenido a la documentación técnica y de gestión de RAK$ CLUB MAGAZINE. Este proyecto está construido con una arquitectura moderna Headless utilizando **Next.js**, **React Three Fiber (3D)** y **Sanity.io**.
+
 
 ## 🎨 Visual Editing: Edición en Tiempo Real (Cero Código)
 
